@@ -6,6 +6,7 @@ import (
 	"MyBloge/utils"
 	"encoding/json"
 	"github.com/google/uuid"
+	"log"
 	"time"
 )
 
@@ -80,7 +81,7 @@ func GetAllArticleDB() ([]model.BloggerArticle, error) {
 func FindUserByUUID(id uuid.UUID) (model.User, error) {
 	var sqlDb = global.SqlDb
 	var user model.User
-	if err := sqlDb.Where("id = ? ", id.String()).First(&user).Error; err != nil {
+	if err := sqlDb.Where("user_id = ? ", id.String()).First(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
@@ -88,7 +89,7 @@ func FindUserByUUID(id uuid.UUID) (model.User, error) {
 func FindArticleByID(id uuid.UUID) (model.BloggerArticle, error) {
 	var sqlDb = global.SqlDb
 	var article = model.BloggerArticle{}
-	if err := sqlDb.Where("id = ?", id.String()).First(&article).Error; err != nil {
+	if err := sqlDb.Where("article_id = ?", id.String()).First(&article).Error; err != nil {
 		return model.BloggerArticle{}, err
 	}
 	return article, nil
@@ -104,7 +105,7 @@ func FindUserByEmail(email string) (model.User, error) {
 
 func UpdateArticle(article model.BloggerArticle) error {
 	var sqlDb = global.SqlDb
-	if err := sqlDb.Model(&model.BloggerArticle{}).Where("id = ?", article.ArticleId).Updates(article).Error; err != nil {
+	if err := sqlDb.Model(&model.BloggerArticle{}).Where("article_id = ?", article.ArticleId).Updates(article).Error; err != nil {
 		return err
 	}
 	articles, err := GetAllArticleDB()
@@ -130,16 +131,17 @@ func FavoriteArticleDB(articleId uuid.UUID, userID uuid.UUID) error {
 		return err
 	}
 	articleCollection.ArticleCollection = append(articleCollection.ArticleCollection, article)
-	if err := sqlDb.Model(&model.FavoritesFolder{}).Where("user_id = ?", userID).Updates(articleCollection).Error; err != nil {
+	if err := sqlDb.Model(&model.FavoritesFolder{}).Where("user_id = ?", userID.String()).Updates(articleCollection).Error; err != nil {
 		return err
 	}
+	log.Println(articleCollection)
 	return nil
 }
 
 func FindCollectionByID(userId uuid.UUID) (model.FavoritesFolder, error) {
 	var sqlDb = global.SqlDb
 	var favoritesFolder model.FavoritesFolder
-	if err := sqlDb.Where("userid = ?", userId.String()).First(&favoritesFolder).Error; err != nil {
+	if err := sqlDb.Where("user_id = ?", userId.String()).First(&favoritesFolder).Error; err != nil {
 		return model.FavoritesFolder{}, err //判断是不是空的
 	}
 	return favoritesFolder, nil
@@ -168,15 +170,24 @@ func AddCommentDB(userid uuid.UUID, newComment utils.AddCommentRequest) error {
 
 func DeleteArticle(id uuid.UUID) error {
 	var sqlDb = global.SqlDb
-	if err := sqlDb.Where("id = ?", id.String()).Delete(&model.BloggerArticle{}).Error; err != nil {
+	if err := sqlDb.Where("article_id = ?", id.String()).Delete(&model.BloggerArticle{}).Error; err != nil {
 		return err
 	}
 	return nil
 }
 func UpdateUser(user model.User) error {
 	var sqlDb = global.SqlDb
-	if err := sqlDb.Model(&model.BloggerArticle{}).Where("id = ?", user.UserId).Updates(user).Error; err != nil {
+	if err := sqlDb.Model(&model.User{}).Where("user_id = ?", user.UserId).Updates(user).Error; err != nil {
 		return err
 	}
 	return nil
+}
+
+func GetArticleFromFolder(userID string) (model.FavoritesFolder, error) {
+	var sqlDb = global.SqlDb
+	var folder model.FavoritesFolder
+	if err := sqlDb.Where("user_id = ?", userID).First(&folder).Error; err != nil {
+		return folder, err
+	}
+	return folder, nil
 }

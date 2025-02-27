@@ -29,6 +29,10 @@ func GetArticleById(context *gin.Context) {
 func AddArticle(context *gin.Context) {
 	var request utils.AddArticleRequest
 	email, _ := context.Get("email")
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if err := db.CreateArticle(request, email.(string)); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -171,4 +175,19 @@ func GetAllArticle(context *gin.Context) {
 		}
 		context.JSON(http.StatusOK, gin.H{"article": articles})
 	}
+}
+
+func GetArticleFromFolder(context *gin.Context) {
+	//拿到userId
+	var request utils.UserIdRequest
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	folder, err := db.GetArticleFromFolder(request.UserId)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": folder})
 }

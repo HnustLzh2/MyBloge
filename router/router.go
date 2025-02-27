@@ -34,6 +34,7 @@ func SetupRouter() *gin.Engine {
 	article := r.Group("/article")
 	article.Use(tokens.Authentication())
 	{
+		article.POST("/getFavoriteArticle", controller.GetArticleFromFolder)
 		article.POST("/addArticle", controller.AddArticle)
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
 		article.POST("/likeArticle", controller.LikeArticle)
