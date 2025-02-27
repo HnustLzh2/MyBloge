@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
+	"log"
 	"net/http"
 )
 
@@ -68,9 +69,10 @@ func LikeArticle(context *gin.Context) {
 func AddComment(context *gin.Context) {
 	var request utils.AddCommentRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		context.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
+	log.Println(request)
 	if err := db.AddCommentDB(request.SendUserId, request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -158,4 +160,40 @@ func GetArticleFromFolder(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"success": folder})
+}
+
+func RepliedComment(context *gin.Context) {
+	var request utils.RepliedCommentRequest
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := db.RepliedCommentDb(request); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": "Replied successfully"})
+}
+
+func LiKeComment(context *gin.Context) {
+	var request utils.LikeCommentRequest
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := db.LikeCommentDB(request.CommentId, request.UserId); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": "Like successfully"})
+}
+
+func GetCommentById(context *gin.Context) {
+	var articleId = context.Param("id")
+	var comment []model.Comment
+	if err := db.GetCommentDB(articleId, &comment); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": comment})
 }

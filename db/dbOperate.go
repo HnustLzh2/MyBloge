@@ -156,8 +156,10 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 	comment.UserName = newComment.UserName
 	comment.UserAvatar = newComment.UserAvatar
 	comment.PublishTime = time.Now()
-	comment.LikeUserId = []string{}
+	comment.LikedUsers = []model.User{}
 	comment.RepliedComments = []model.Comment{}
+	comment.ParentCommentId = nil
+	comment.ArticleId = newComment.ArticleId
 	if err := sqlDb.AutoMigrate(&comment); err != nil {
 		return err
 	}
@@ -189,4 +191,61 @@ func GetArticleFromFolder(userID string) (model.FavoritesFolder, error) {
 		return folder, err
 	}
 	return folder, nil
+}
+
+func RepliedCommentDb(request utils.RepliedCommentRequest) error {
+	var sqlDb = global.SqlDb
+	comment := model.Comment{}
+	now := time.Now()
+	comment.CommentId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
+	comment.SendUserId = request.SendUserId
+	comment.Content = request.Content
+	comment.UserName = request.UserName
+	comment.UserAvatar = request.UserAvatar
+	comment.PublishTime = time.Now()
+	comment.LikedUsers = []model.User{}
+	comment.RepliedComments = []model.Comment{}
+	comment.ParentCommentId = &request.ParentID
+	comment.ArticleId = request.ArticleId
+	parentComment, err := FindCommentById(request.ParentID)
+	if err != nil {
+		return err
+	}
+	if err := sqlDb.Model(&parentComment).Association("RepliedComments").Append(&comment); err != nil {
+		return err
+	}
+	return nil
+}
+
+func FindCommentById(commentId string) (model.Comment, error) {
+	var sqlDb = global.SqlDb
+	var comment model.Comment
+	if err := sqlDb.Where("comment_id = ?", commentId).First(&comment).Error; err != nil {
+		return comment, err
+	}
+	return comment, nil
+}
+
+func LikeCommentDB(commentId string, userId string) error {
+	var sqlDb = global.SqlDb
+	user, err := FindUserByUUID(userId)
+	if err != nil {
+		return err
+	}
+	comment, err := FindCommentById(commentId)
+	if err != nil {
+		return err
+	}
+	if err := sqlDb.Model(&comment).Association("LikedUsers").Append(&user); err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetCommentDB(articleId string, comments *[]model.Comment) error {
+	var sqlDb = global.SqlDb
+	if err := sqlDb.Where("article_id = ?", articleId).Find(&comments).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -31,6 +31,7 @@ func SetupRouter() *gin.Engine {
 	}
 	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
+	r.GET("/getComment/:id", controller.GetCommentById)
 	article := r.Group("/article")
 	article.Use(tokens.Authentication())
 	{
@@ -39,6 +40,8 @@ func SetupRouter() *gin.Engine {
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
 		article.POST("/likeArticle", controller.LikeArticle)
 		article.POST("/addComments", controller.AddComment)
+		article.POST("/repliedComment", controller.RepliedComment)
+		article.POST("/likeComment", controller.LiKeComment)
 
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
 
