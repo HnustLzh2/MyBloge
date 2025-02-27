@@ -8,20 +8,16 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
-	"github.com/google/uuid"
 	"net/http"
 )
 
 func GetArticleById(context *gin.Context) {
 	var articleId = context.Param("id")
 	var article = model.BloggerArticle{}
-	parseID, err := uuid.Parse(articleId)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	}
-	article, err = db.FindArticleByID(parseID)
+	article, err := db.FindArticleByID(articleId)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	context.JSON(http.StatusOK, gin.H{"article": article})
 }
@@ -46,15 +42,7 @@ func FavoriteArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	userId := request.UserId
-	userParseID, err := uuid.Parse(userId)
-	articleId := request.ArticleId
-	articleParseID, err := uuid.Parse(articleId)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := db.FavoriteArticleDB(articleParseID, userParseID); err != nil {
+	if err := db.FavoriteArticleDB(request.ArticleId, request.UserId); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
@@ -62,13 +50,8 @@ func FavoriteArticle(context *gin.Context) {
 }
 
 func LikeArticle(context *gin.Context) {
-	id := context.Param("id")
-	parseID, err := uuid.Parse(id)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	article, err := db.FindArticleByID(parseID)
+	id := context.Param("articleId")
+	article, err := db.FindArticleByID(id)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -88,12 +71,7 @@ func AddComment(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	parseID, err := uuid.Parse(request.SendUserId)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := db.AddCommentDB(parseID, request); err != nil {
+	if err := db.AddCommentDB(request.SendUserId, request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
@@ -106,12 +84,7 @@ func DeleteArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	parseID, err := uuid.Parse(request.ArticleId)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := db.DeleteArticle(parseID); err != nil {
+	if err := db.DeleteArticle(request.ArticleId); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
@@ -124,12 +97,7 @@ func ModifyArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	parseID, err := uuid.Parse(request.ID)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	newArticle, err := db.FindArticleByID(parseID)
+	newArticle, err := db.FindArticleByID(request.ID)
 	newArticle.Preview = request.Preview
 	newArticle.Title = request.Title
 	newArticle.Content = request.Content
@@ -162,7 +130,7 @@ func GetAllArticle(context *gin.Context) {
 			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		context.JSON(http.StatusOK, gin.H{"article": articles})
+		context.JSON(http.StatusOK, gin.H{"articles": articles})
 		return
 	} else if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -173,7 +141,7 @@ func GetAllArticle(context *gin.Context) {
 			context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		context.JSON(http.StatusOK, gin.H{"article": articles})
+		context.JSON(http.StatusOK, gin.H{"articles": articles})
 	}
 }
 

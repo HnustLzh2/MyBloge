@@ -2,12 +2,19 @@ package db
 
 import (
 	"MyBloge/global"
+	"github.com/go-redis/redis"
 	"time"
 )
 
-var redisDb = global.Redis
-var articleCache = global.ArticleCacheKey
-var commentCache = global.CommentCacheKey
+func InitRedisValue() {
+	redisDb = global.Redis
+	articleCache = global.ArticleCacheKey
+	commentCache = global.CommentCacheKey
+}
+
+var redisDb *redis.Client
+var articleCache string
+var commentCache string
 
 func GetArticleFromRedis() (string, error) {
 	cacheData, err := redisDb.Get(articleCache).Result()

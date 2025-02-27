@@ -2,12 +2,14 @@ package main
 
 import (
 	"MyBloge/config"
+	"MyBloge/db"
 	"MyBloge/router"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	config.InitConfig()
+	db.InitRedisValue()
 	r := router.SetupRouter()
 	port := config.AppConfig.App.Port
 	if port == "" {

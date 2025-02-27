@@ -29,7 +29,7 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/login", controller.Login)
 		auth.POST("/register", controller.Register)
 	}
-	r.GET("/getArticle", controller.GetArticleById)
+	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
 	article := r.Group("/article")
 	article.Use(tokens.Authentication())

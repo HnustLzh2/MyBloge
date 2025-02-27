@@ -6,7 +6,6 @@ import (
 	"MyBloge/utils"
 	"encoding/json"
 	"github.com/google/uuid"
-	"log"
 	"time"
 )
 
@@ -78,18 +77,18 @@ func GetAllArticleDB() ([]model.BloggerArticle, error) {
 	}
 	return articles, nil
 }
-func FindUserByUUID(id uuid.UUID) (model.User, error) {
+func FindUserByUUID(id string) (model.User, error) {
 	var sqlDb = global.SqlDb
 	var user model.User
-	if err := sqlDb.Where("user_id = ? ", id.String()).First(&user).Error; err != nil {
+	if err := sqlDb.Where("user_id = ? ", id).First(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
 }
-func FindArticleByID(id uuid.UUID) (model.BloggerArticle, error) {
+func FindArticleByID(id string) (model.BloggerArticle, error) {
 	var sqlDb = global.SqlDb
 	var article = model.BloggerArticle{}
-	if err := sqlDb.Where("article_id = ?", id.String()).First(&article).Error; err != nil {
+	if err := sqlDb.Where("article_id = ?", id).First(&article).Error; err != nil {
 		return model.BloggerArticle{}, err
 	}
 	return article, nil
@@ -123,36 +122,36 @@ func UpdateArticle(article model.BloggerArticle) error {
 	return nil
 }
 
-func FavoriteArticleDB(articleId uuid.UUID, userID uuid.UUID) error {
+// FavoriteArticleDB 通过使用 GORM 的 Association 方法，你可以正确管理多对多关系的添加和更新操作。确保中间表的配置正确，并使用合适的 GORM 方法来操作多对多关系
+func FavoriteArticleDB(articleId string, userID string) error {
 	var sqlDb = global.SqlDb
 	articleCollection, err := FindCollectionByID(userID)
 	article, err := FindArticleByID(articleId)
 	if err != nil {
 		return err
 	}
-	articleCollection.ArticleCollection = append(articleCollection.ArticleCollection, article)
-	if err := sqlDb.Model(&model.FavoritesFolder{}).Where("user_id = ?", userID.String()).Updates(articleCollection).Error; err != nil {
+	// 使用 Association 方法添加 Article 到 ArticleCollection
+	if err := sqlDb.Model(&articleCollection).Association("ArticleCollection").Append(&article); err != nil {
 		return err
 	}
-	log.Println(articleCollection)
 	return nil
 }
 
-func FindCollectionByID(userId uuid.UUID) (model.FavoritesFolder, error) {
+func FindCollectionByID(userId string) (model.FavoritesFolder, error) {
 	var sqlDb = global.SqlDb
 	var favoritesFolder model.FavoritesFolder
-	if err := sqlDb.Where("user_id = ?", userId.String()).First(&favoritesFolder).Error; err != nil {
+	if err := sqlDb.Where("user_id = ?", userId).First(&favoritesFolder).Error; err != nil {
 		return model.FavoritesFolder{}, err //判断是不是空的
 	}
 	return favoritesFolder, nil
 }
 
-func AddCommentDB(userid uuid.UUID, newComment utils.AddCommentRequest) error {
+func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 	var sqlDb = global.SqlDb
 	comment := model.Comment{}
 	now := time.Now()
 	comment.CommentId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
-	comment.SendUserId = userid.String()
+	comment.SendUserId = userid
 	comment.Content = newComment.Content
 	comment.UserName = newComment.UserName
 	comment.UserAvatar = newComment.UserAvatar
@@ -168,9 +167,9 @@ func AddCommentDB(userid uuid.UUID, newComment utils.AddCommentRequest) error {
 	return nil
 }
 
-func DeleteArticle(id uuid.UUID) error {
+func DeleteArticle(id string) error {
 	var sqlDb = global.SqlDb
-	if err := sqlDb.Where("article_id = ?", id.String()).Delete(&model.BloggerArticle{}).Error; err != nil {
+	if err := sqlDb.Where("article_id = ?", id).Delete(&model.BloggerArticle{}).Error; err != nil {
 		return err
 	}
 	return nil
