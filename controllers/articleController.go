@@ -8,7 +8,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
-	"log"
 	"net/http"
 )
 
@@ -72,7 +71,6 @@ func AddComment(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	log.Println(request)
 	if err := db.AddCommentDB(request.SendUserId, request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -87,6 +85,11 @@ func DeleteArticle(context *gin.Context) {
 		return
 	}
 	if err := db.DeleteArticle(request.ArticleId); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	//这里删除之后要删除redis缓存中的数据
+	if err := db.DeleteArticleCache(); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
@@ -112,6 +115,11 @@ func ModifyArticle(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := db.DeleteArticleCache(); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": "Update successfully"})
 }
 
 func GetAllArticle(context *gin.Context) {

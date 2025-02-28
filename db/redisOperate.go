@@ -42,3 +42,10 @@ func SetCommentCache(commentByte []byte) error {
 	}
 	return nil
 }
+
+func DeleteArticleCache() error {
+	if err := redisDb.Del(articleCache).Err(); err != nil {
+		return err
+	}
+	return nil
+}

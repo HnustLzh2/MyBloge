@@ -11,6 +11,7 @@ import (
 func main() {
 	config.InitConfig()
 	db.InitRedisValue()
+	db.InitDbOperate()
 	controller.InitAuthValue()
 	r := router.SetupRouter()
 	port := config.AppConfig.App.Port
