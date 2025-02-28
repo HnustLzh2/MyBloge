@@ -4,7 +4,6 @@ import (
 	"MyBloge/global"
 	"MyBloge/model"
 	"MyBloge/utils"
-	"encoding/json"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -70,6 +69,9 @@ func CreateArticle(request utils.AddArticleRequest, email string) error {
 	if err := sqlDb.Create(&article).Error; err != nil {
 		return err
 	}
+	if err = DeleteArticleCache(); err != nil {
+		return err
+	}
 	return nil
 }
 func GetAllArticleDB() ([]model.BloggerArticle, error) {
@@ -88,7 +90,7 @@ func FindUserByUUID(id string) (model.User, error) {
 }
 func FindArticleByID(id string) (model.BloggerArticle, error) {
 	var article = model.BloggerArticle{}
-	if err := sqlDb.Where("author_id = ?", id).First(&article).Error; err != nil {
+	if err := sqlDb.Where("article_id = ?", id).First(&article).Error; err != nil {
 		return model.BloggerArticle{}, err
 	}
 	return article, nil
@@ -105,16 +107,8 @@ func UpdateArticle(article model.BloggerArticle) error {
 	if err := sqlDb.Model(&model.BloggerArticle{}).Where("article_id = ?", article.ArticleId).Updates(article).Error; err != nil {
 		return err
 	}
-	articles, err := GetAllArticleDB()
-	if err != nil {
-		return err
-	}
-	articlesJson, err := json.Marshal(articles)
-	if err != nil {
-		return err
-	}
-	//更新redis
-	if err := SetArticleCache(articlesJson); err != nil {
+	//更新redis  **
+	if err := DeleteArticleCache(); err != nil {
 		return err
 	}
 	return nil
@@ -159,6 +153,9 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 		return err
 	}
 	if err := sqlDb.Create(&comment).Error; err != nil {
+		return err
+	}
+	if err := DeleteCommentCache(); err != nil {
 		return err
 	}
 	return nil

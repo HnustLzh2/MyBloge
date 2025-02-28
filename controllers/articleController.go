@@ -33,6 +33,7 @@ func AddArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	context.JSON(http.StatusOK, gin.H{"article": request})
 }
 
@@ -115,10 +116,6 @@ func ModifyArticle(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err := db.DeleteArticleCache(); err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
 	context.JSON(http.StatusOK, gin.H{"success": "Update successfully"})
 }
 
@@ -180,6 +177,10 @@ func RepliedComment(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := db.DeleteCommentCache(); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	context.JSON(http.StatusOK, gin.H{"success": "Replied successfully"})
 }
 
@@ -193,15 +194,43 @@ func LiKeComment(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	//更新redis
+	if err := db.DeleteCommentCache(); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	context.JSON(http.StatusOK, gin.H{"success": "Like successfully"})
 }
 
 func GetCommentById(context *gin.Context) {
 	var articleId = context.Param("id")
 	var comment []model.Comment
-	if err := db.GetCommentDB(articleId, &comment); err != nil {
+	commentsCache, err := db.GetCommentCache()
+	if errors.Is(err, redis.Nil) {
+		if err := db.GetCommentDB(articleId, &comment); err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		commentByte, err := json.Marshal(comment)
+		if err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if err := db.SetCommentCache(commentByte); err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		context.JSON(http.StatusOK, gin.H{"success": comment})
+	} else if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	} else {
+		//[]byte()括号里要是string类型，就是把string变成字节类型，存进redis缓存中
+		if err := json.Unmarshal([]byte(commentsCache), &comment); err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		context.JSON(http.StatusOK, gin.H{"success": comment})
 	}
 	context.JSON(http.StatusOK, gin.H{"success": comment})
 }
