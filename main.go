@@ -2,6 +2,7 @@ package main
 
 import (
 	"MyBloge/config"
+	controller "MyBloge/controllers"
 	"MyBloge/db"
 	"MyBloge/router"
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 func main() {
 	config.InitConfig()
 	db.InitRedisValue()
+	controller.InitAuthValue()
 	r := router.SetupRouter()
 	port := config.AppConfig.App.Port
 	if port == "" {
