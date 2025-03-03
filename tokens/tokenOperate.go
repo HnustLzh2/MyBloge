@@ -16,7 +16,11 @@ type MyClaims struct {
 	jwt.StandardClaims
 }
 
-var SECRET_KEY = os.Getenv("SECRET_KEY") //密钥
+var SECRET_KEY string // 密钥
+
+func InitEnv() {
+	SECRET_KEY = os.Getenv("SECRET_KEY")
+}
 
 func GenerateToken(Email string, name string) (SignedToken string, refreshToken string, err error) {
 	claims := MyClaims{

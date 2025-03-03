@@ -36,15 +36,11 @@ type ModifyArticleRequest struct {
 type AddCommentRequest struct {
 	Content    string `json:"content"`
 	SendUserId string `json:"user_id"`
-	UserName   string `json:"user_name"`
-	UserAvatar string `json:"user_avatar"`
 	ArticleId  string `json:"article_id"`
 }
 type RepliedCommentRequest struct {
 	Content    string `json:"content"`
 	SendUserId string `json:"user_id"`
-	UserName   string `json:"user_name"`
-	UserAvatar string `json:"user_avatar"`
 	ArticleId  string `json:"article_id"`
 	ParentID   string `json:"parent_id"`
 }

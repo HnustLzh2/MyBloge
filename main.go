@@ -5,6 +5,7 @@ import (
 	controller "MyBloge/controllers"
 	"MyBloge/db"
 	"MyBloge/router"
+	"MyBloge/tokens"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,6 +13,7 @@ func main() {
 	config.InitConfig()
 	db.InitRedisValue()
 	db.InitDbOperate()
+	tokens.InitEnv()
 	controller.InitAuthValue()
 	r := router.SetupRouter()
 	port := config.AppConfig.App.Port

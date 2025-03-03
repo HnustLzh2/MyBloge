@@ -137,13 +137,17 @@ func FindCollectionByID(userId string) (model.FavoritesFolder, error) {
 }
 
 func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
+	user, err := FindUserByUUID(userid)
+	if err != nil {
+		return err
+	}
 	comment := model.Comment{}
 	now := time.Now()
 	comment.CommentId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
 	comment.SendUserId = userid
 	comment.Content = newComment.Content
-	comment.UserName = newComment.UserName
-	comment.UserAvatar = newComment.UserAvatar
+	comment.UserName = user.Name
+	comment.UserAvatar = user.Avatar
 	comment.PublishTime = time.Now()
 	comment.LikedUsers = []model.User{}
 	comment.RepliedComments = []model.Comment{}
@@ -184,13 +188,17 @@ func GetArticleFromFolder(userID string) (model.FavoritesFolder, error) {
 }
 
 func RepliedCommentDb(request utils.RepliedCommentRequest) error {
+	user, err := FindUserByUUID(request.SendUserId)
+	if err != nil {
+		return err
+	}
 	comment := model.Comment{}
 	now := time.Now()
 	comment.CommentId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
 	comment.SendUserId = request.SendUserId
 	comment.Content = request.Content
-	comment.UserName = request.UserName
-	comment.UserAvatar = request.UserAvatar
+	comment.UserName = user.Name
+	comment.UserAvatar = user.Avatar
 	comment.PublishTime = time.Now()
 	comment.LikedUsers = []model.User{}
 	comment.RepliedComments = []model.Comment{}
