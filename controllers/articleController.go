@@ -236,6 +236,16 @@ func GetCommentById(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"success": comment})
 }
 
+// SearchArticle @BasePath /api/v1
+// PingExample godoc
+// @Summary ping example
+// @Schemes
+// @Description do ping
+// @Tags example
+// @Accept json
+// @Produce json
+// @Success 200 {string} Helloworld
+// @Router /example/helloworld [get]
 func SearchArticle(c *gin.Context) {
 	text := c.Query("text")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

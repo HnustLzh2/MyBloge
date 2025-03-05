@@ -2,13 +2,17 @@ package router
 
 import (
 	controller "MyBloge/controllers"
+	"MyBloge/docs"
 	"MyBloge/tokens"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"time"
 )
 
 func SetupRouter() *gin.Engine {
+
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		// 允许所有来源
@@ -49,5 +53,18 @@ func SetupRouter() *gin.Engine {
 
 		article.PUT("/modifyArticle", controller.ModifyArticle)
 	}
+	registerSwagger(r)
 	return r
+}
+func registerSwagger(r gin.IRouter) {
+	// API文档访问地址: http://host/swagger/index.html
+	// 注解定义可参考 https://github.com/swaggo/swag#declarative-comments-format
+	// 样例 https://github.com/swaggo/swag/blob/master/example/basic/api/api.go
+	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.Title = "管理后台接口"
+	docs.SwaggerInfo.Description = "实现一个管理系统的后端API服务"
+	docs.SwaggerInfo.Version = "1.0"
+	docs.SwaggerInfo.Host = "localhost:3001"
+	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }

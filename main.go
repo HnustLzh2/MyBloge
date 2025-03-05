@@ -4,6 +4,7 @@ import (
 	"MyBloge/config"
 	controller "MyBloge/controllers"
 	"MyBloge/db"
+	_ "MyBloge/docs"
 	"MyBloge/router"
 	"MyBloge/tokens"
 	"github.com/gin-gonic/gin"
