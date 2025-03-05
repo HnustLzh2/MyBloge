@@ -1,5 +1,5 @@
   database:
-    dsn: root:123456@tcp(127.0.0.1:3306)/myBlogger_db_v1?charset=utf8&parseTime=True&loc=Local
+    dsn: root:1176991667@tcp(127.0.0.1:3306)/myBlogger_db_v1?charset=utf8&parseTime=True&loc=Local
     MaxIdleConnes: 11
     MaxOpenConnes: 114
   app:

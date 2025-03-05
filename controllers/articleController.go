@@ -236,17 +236,18 @@ func GetCommentById(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"success": comment})
 }
 
-// SearchArticle @BasePath /api/v1
-// PingExample godoc
-// @Summary ping example
-// @Schemes
-// @Description do ping
-// @Tags example
-// @Accept json
-// @Produce json
-// @Success 200 {string} Helloworld
-// @Router /example/helloworld [get]
+// SearchArticle @Summary      Search articles
+// @Description  Search articles by text
+// @Tags         articles
+// @Accept       json
+// @Produce      json
+// @Param        text  query   string  true  "Search text"
+// @Param        page  query   int     true  "Page number"
+// @Param        size  query   int     true  "Page size"
+// @Success      200   {object} model.BloggerArticle{}
+// @Router       /searchArticle [get]
 func SearchArticle(c *gin.Context) {
+	//param 的true，false代表是不是必填参数，query，path代表是查询参数还是路径参数
 	text := c.Query("text")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
