@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"net/http"
+	"strconv"
 )
 
 func GetArticleById(context *gin.Context) {
@@ -233,4 +234,15 @@ func GetCommentById(context *gin.Context) {
 		context.JSON(http.StatusOK, gin.H{"success": comment})
 	}
 	context.JSON(http.StatusOK, gin.H{"success": comment})
+}
+
+func SearchArticle(c *gin.Context) {
+	text := c.Query("text")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	articles, total, err := db.SearchArticle(text, page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+	}
+	c.JSON(http.StatusOK, gin.H{"success": articles, "total": total, "size": size, "page": page})
 }

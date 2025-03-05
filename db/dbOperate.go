@@ -166,6 +166,7 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 }
 
 // DeleteArticle sqlDb.Unscoped().Where("article_id = ?", id).Delete(&model.BloggerArticle{}).Error; err != nil Unscoped可以进行硬删除，彻底删除
+// 简单一点 if err := sqlDb.Unscoped().Delete(&model.BloggerArticle{}, "article_id = ?", id).Error; err != nil {}这样也能删除
 func DeleteArticle(id string) error {
 	if err := sqlDb.Where("article_id = ?", id).Delete(&model.BloggerArticle{}).Error; err != nil {
 		return err
@@ -242,4 +243,21 @@ func GetCommentDB(articleId string, comments *[]model.Comment) error {
 		return err
 	}
 	return nil
+}
+
+func SearchArticle(text string, page int, size int) (interface{}, interface{}, interface{}) {
+	var articles []model.BloggerArticle
+	var total int64
+	total = int64(0)
+	//计算符合条件的文章总数  %text% 	%表示任意字符序列  LIKE用于匹配符合条件的数据
+	err := sqlDb.Model(&model.BloggerArticle{}).Where("title LIKE ?", "%"+text+"%").Count(&total).Error
+	if err != nil {
+		return articles, nil, err
+	}
+	//分页搜索，offset表示偏移，要第一页的内容就偏移0，第二页的内容就偏移1个size，以此类推，limit限制结果的大小
+	err = sqlDb.Where("title LIKE ?", "%"+text+"%").Offset((page - 1) * size).Limit(size).Find(&articles).Error
+	if err != nil {
+		return articles, nil, err
+	}
+	return articles, total, nil
 }

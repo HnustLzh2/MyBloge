@@ -32,6 +32,8 @@ func SetupRouter() *gin.Engine {
 	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
 	r.GET("/getComment/:id", controller.GetCommentById)
+	//GET /articles?text=keyword&page=1&size=10
+	r.GET("/searchArticle", controller.SearchArticle)
 	article := r.Group("/article")
 	article.Use(tokens.Authentication())
 	{
