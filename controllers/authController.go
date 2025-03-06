@@ -61,10 +61,7 @@ func Login(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err := tokens.UpdateToken(tokenString, refreshToken, &user); err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	tokens.UpdateToken(tokenString, refreshToken, &user)
 	if err := db.UpdateUser(user); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

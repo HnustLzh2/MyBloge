@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest  # 使用最新的 Redis 镜像
+    container_name: redis-server  # 容器名称
+    ports:
+      - "6379:6379"  # 将容器的 6379 端口映射到宿主机的 6379 端口
+    volumes:
+      - redis-data:/data  # 持久化数据卷
+    command: redis-server --appendonly yes  # 开启 AOF 持久化
+
+volumes:
+  redis-data:  # 定义数据卷
