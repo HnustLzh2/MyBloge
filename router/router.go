@@ -5,15 +5,22 @@ import (
 	"MyBloge/docs"
 	"MyBloge/tokens"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"os"
 	"time"
 )
 
 func SetupRouter() *gin.Engine {
 
 	r := gin.Default()
+	var SECRET_KEY = os.Getenv("SECRET_KEY")
+	store := cookie.NewStore([]byte(SECRET_KEY))
+	r.Use(sessions.Sessions("UserSession", store))
+
 	r.Use(cors.New(cors.Config{
 		// 允许所有来源
 		AllowAllOrigins: true,
@@ -32,25 +39,26 @@ func SetupRouter() *gin.Engine {
 	{
 		auth.POST("/login", controller.Login)
 		auth.POST("/register", controller.Register)
+		auth.GET("/logout", controller.Logout)
 	}
 	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
 	r.GET("/getComment/:id", controller.GetCommentById)
 	//GET /articles?text=keyword&page=1&size=10
 	r.GET("/searchArticle", controller.SearchArticle)
+	r.POST("/likeArticle", controller.LikeArticle)
 	article := r.Group("/article")
-	article.Use(tokens.Authentication())
+	article.Use(tokens.Authorization())
 	{
 		article.POST("/getFavoriteArticle", controller.GetArticleFromFolder)
 		article.POST("/addArticle", controller.AddArticle)
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
-		article.POST("/likeArticle", controller.LikeArticle)
+
 		article.POST("/addComments", controller.AddComment)
 		article.POST("/repliedComment", controller.RepliedComment)
 		article.POST("/likeComment", controller.LiKeComment)
 
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
-
 		article.PUT("/modifyArticle", controller.ModifyArticle)
 	}
 	registerSwagger(r)

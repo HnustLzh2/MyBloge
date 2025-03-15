@@ -6,6 +6,7 @@ import (
 	"MyBloge/utils"
 	"encoding/json"
 	"errors"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"net/http"
@@ -81,6 +82,16 @@ func AddComment(context *gin.Context) {
 }
 
 func DeleteArticle(context *gin.Context) {
+	session := sessions.Default(context)
+	var role = session.Get("Authorization")
+	if role == "" {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	} else if role == "user" {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	//只有 admin权限才能访问
 	var request utils.ArticleIdRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -99,6 +110,16 @@ func DeleteArticle(context *gin.Context) {
 }
 
 func ModifyArticle(context *gin.Context) {
+	session := sessions.Default(context)
+	var role = session.Get("Authorization")
+	if role == "" {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	} else if role == "user" {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	//只有 admin权限才能访问
 	var request utils.ModifyArticleRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

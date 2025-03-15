@@ -20,8 +20,13 @@ type MyClaims struct {
 
 var SECRET_KEY string // 密钥
 
-func InitEnv() {
+// init 函数会在包被导入时自动执行	***
+func init() {
 	SECRET_KEY = os.Getenv("SECRET_KEY")
+	if SECRET_KEY == "" {
+		// 如果环境变量未设置，可以提供一个默认值或报错
+		SECRET_KEY = "default-secret-key"
+	}
 }
 
 func GenerateToken(email string, name string) (accessToken string, refreshToken string, err error) {
@@ -99,11 +104,35 @@ func RefreshToken(refreshToken string) (newAccessToken string, newRefreshToken s
 	}
 	return newAccessToken, newRefreshToken, nil
 }
-func Authentication() gin.HandlerFunc {
+
+// 移除所有的cookies喝Header
+func NullifyTokenCookiesAndHeader(c *gin.Context) {
+	c.Writer.Header().Del("Authorization")
+	c.Writer.Header().Del("RefreshToken")
+	c.SetCookie("Authorization", "", -1, "/", "", false, true)
+	c.SetCookie("RefreshToken", "", -1, "/", "", false, true)
+}
+func SetInfoAtHeaderAndCookies(c *gin.Context, authToken string, refreshToken string, email string, name string) {
+	c.Header("Authorization", authToken)
+	c.Header("Refresh-Token", refreshToken)
+	c.SetCookie("authToken", authToken, 60*60*24, "/", "", false, true)
+	c.SetCookie("refreshToken", refreshToken, 60*60*24, "/", "", false, true)
+	c.Set("email", email)
+	c.Set("name", name)
+}
+func Authorization() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.Request.Header.Get("Authorization")
+		refreshToken := c.Request.Header.Get("RefreshToken")
 		if tokenString == "" {
+			NullifyTokenCookiesAndHeader(c)
 			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "token is empty"})
+			c.Abort()
+			return
+		}
+		if refreshToken == "" {
+			NullifyTokenCookiesAndHeader(c)
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "refresh token is empty"})
 			c.Abort()
 			return
 		}
@@ -112,40 +141,42 @@ func Authentication() gin.HandlerFunc {
 			// 如果 Access Token 过期，尝试使用 Refresh Token 刷新
 			var ve *jwt.ValidationError
 			if errors.As(err, &ve) && ve.Errors == jwt.ValidationErrorExpired {
-				refreshToken := c.Request.Header.Get("RefreshToken")
-				if refreshToken == "" {
-					c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "refresh token is empty"})
+				//检查RefreshToken是不是合法或者是不是过期
+				_, err := VerifyToken(refreshToken)
+				if err != nil {
+					NullifyTokenCookiesAndHeader(c)
+					c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "refresh token is invalid"})
 					c.Abort()
-					return
 				}
 				// 刷新 Token
 				newAccessToken, newRefreshToken, err := RefreshToken(refreshToken)
 				if err != nil {
+					NullifyTokenCookiesAndHeader(c)
 					c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
 					c.Abort()
 					return
 				}
-				// 返回新的 Token
-				c.Header("Authorization", newAccessToken)
-				c.Header("Refresh-Token", newRefreshToken)
 				//给user设置token
 				user, err := db.FindUserByEmail(claims.Email)
 				if err != nil {
-					c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+					NullifyTokenCookiesAndHeader(c)
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database Error"})
 					c.Abort()
 					return
 				}
 				UpdateToken(newAccessToken, newRefreshToken, &user)
 				err = db.UpdateUser(user)
 				if err != nil {
+					NullifyTokenCookiesAndHeader(c)
 					c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "error updating user"})
 					return
 				}
+				SetInfoAtHeaderAndCookies(c, newAccessToken, newRefreshToken, claims.Email, claims.Name)
+				c.Next()
 			}
 		}
 		// 设置用户信息到上下文
-		c.Set("email", claims.Email)
-		c.Set("name", claims.Name)
+		SetInfoAtHeaderAndCookies(c, tokenString, refreshToken, claims.Email, claims.Name)
 		c.Next()
 	}
 }
