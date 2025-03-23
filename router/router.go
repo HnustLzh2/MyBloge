@@ -8,16 +8,24 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"log"
 	"os"
 	"time"
 )
 
 func SetupRouter() *gin.Engine {
-
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	r := gin.Default()
-	var SECRET_KEY = os.Getenv("SECRET_KEY")
+	var SECRET_KEY = os.Getenv("SESSION_KEY")
+	if SECRET_KEY == "" {
+		SECRET_KEY = "default key"
+	}
 	store := cookie.NewStore([]byte(SECRET_KEY))
 	r.Use(sessions.Sessions("UserSession", store))
 
@@ -44,16 +52,17 @@ func SetupRouter() *gin.Engine {
 	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
 	r.GET("/getComment/:id", controller.GetCommentById)
+	r.GET("/getCategory", controller.GetCategory)
+	r.GET("/getCategoryArticle/:category", controller.GetCategoryArticle)
 	//GET /articles?text=keyword&page=1&size=10
 	r.GET("/searchArticle", controller.SearchArticle)
-	r.POST("/likeArticle", controller.LikeArticle)
 	article := r.Group("/article")
 	article.Use(tokens.Authorization())
 	{
 		article.POST("/getFavoriteArticle", controller.GetArticleFromFolder)
-		article.POST("/addArticle", controller.AddArticle)
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
-
+		article.POST("/likeArticle", controller.LikeArticle)
+		article.POST("/addArticle", controller.AddArticle)
 		article.POST("/addComments", controller.AddComment)
 		article.POST("/repliedComment", controller.RepliedComment)
 		article.POST("/likeComment", controller.LiKeComment)
@@ -61,6 +70,8 @@ func SetupRouter() *gin.Engine {
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
 		article.PUT("/modifyArticle", controller.ModifyArticle)
 	}
+	r.POST("/checkToken", controller.CheckTokenValid)
+	r.POST("/refreshToken", controller.RefreshToken)
 	registerSwagger(r)
 	return r
 }

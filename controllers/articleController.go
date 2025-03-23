@@ -31,7 +31,7 @@ func AddArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := db.CreateArticle(request, email.(string)); err != nil {
+	if err := db.CreateArticle(request, email.(string)); err != nil { //断言的办法
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -277,4 +277,27 @@ func SearchArticle(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 	}
 	c.JSON(http.StatusOK, gin.H{"success": articles, "total": total, "size": size, "page": page})
+}
+
+func GetCategory(context *gin.Context) {
+	// 定义一个切片来存储所有的 category
+	var categories []string
+	if err := db.GetCategory(&categories); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	// 返回结果
+	context.JSON(http.StatusOK, gin.H{"categories": categories})
+}
+
+func GetCategoryArticle(context *gin.Context) {
+	var articles []model.BloggerArticle
+	var category = context.Param("category") //断言成string
+	category = category[9:]
+	articles, err := db.GetArticlesByCategory(category)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"articles": articles})
 }

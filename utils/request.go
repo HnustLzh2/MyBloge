@@ -48,3 +48,7 @@ type LikeCommentRequest struct {
 	CommentId string `json:"comment_id"`
 	UserId    string `json:"user_id"`
 }
+type TokenRequest struct {
+	AuthToken    string `json:"auth_token"`
+	RefreshToken string `json:"refresh_token"`
+}

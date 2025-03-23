@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var loginLimit int
+var loginLimit int //时间限制
 var loginTimer *time.Timer
 var isLoginCooldown bool
 
@@ -39,13 +39,14 @@ func Login(context *gin.Context) {
 	user, err := db.FindUserByEmail(loginRequest.Email)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 	if !utils.CheckOutPassword(user.Password, loginRequest.Password) {
 		loginLimit++
 		if loginLimit > 3 {
 			// 启动冷却期
 			isLoginCooldown = true
-			loginTimer.Reset(3 * time.Minute) // 重置定时器为3分钟
+			loginTimer.Reset(2 * time.Minute) // 重置定时器为2分钟
 			go func() {
 				<-loginTimer.C    // 等待定时器触发
 				reloadAuthValue() // 重置登录限制
@@ -86,7 +87,7 @@ func Login(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"user": user})
+	context.JSON(http.StatusOK, gin.H{"data": user})
 }
 
 func Register(context *gin.Context) {

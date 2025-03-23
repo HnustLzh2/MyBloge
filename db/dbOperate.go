@@ -261,3 +261,22 @@ func SearchArticle(text string, page int, size int) (interface{}, interface{}, i
 	}
 	return articles, total, nil
 }
+
+// GetCategory 数据库查询：
+// 使用 Distinct() 方法确保查询结果是唯一的。
+// 使用 Select("category") 指定只查询 category 字段。
+// 使用 Scan(&results) 将查询结果映射到一个结构体切片中。 有点类似于.First，Scan输入，Value是获得值给变量
+func GetCategory(results *[]string) error {
+	if err := sqlDb.Model(&model.BloggerArticle{}).Distinct().Select("category").Scan(&results).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetArticlesByCategory(category string) ([]model.BloggerArticle, error) {
+	var articles []model.BloggerArticle
+	if err := sqlDb.Where("category = ?", category).Find(&articles).Error; err != nil {
+		return nil, err
+	}
+	return articles, nil
+}
