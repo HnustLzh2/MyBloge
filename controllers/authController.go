@@ -78,8 +78,6 @@ func Login(context *gin.Context) {
 	//httpOnly：是否将 Cookie 设置为 HTTPOnly，这里是 true，表示 Cookie 不可被 JavaScript 访问，从而提高安全性。
 	context.SetCookie("authToken", tokenString, 60*60*1, "/", "", false, true)
 	context.SetCookie("refreshToken", refreshToken, 60*60*24*7, "/", "", false, true)
-	context.Header("RefreshToken", refreshToken)
-	context.Header("Authorization", tokenString)
 	session := sessions.Default(context)
 	session.Set("Authorization", user.Authorization)
 	session.Set("UserId", user.UserId)

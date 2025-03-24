@@ -4,6 +4,7 @@
     <inspection_tool class="GoDfaErrorMayBeNotNil" enabled="true" level="WARNING" enabled_by_default="true">
       <functions>
         <function importPath="MyBloge/db" name="FindUserByEmail" />
+        <function importPath="MyBloge/db" name="FindArticleByID" />
       </functions>
     </inspection_tool>
   </profile>

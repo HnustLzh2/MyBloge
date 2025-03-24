@@ -19,6 +19,7 @@ type MyClaims struct {
 }
 
 var SECRET_KEY string // 密钥
+var TokenExpireError error
 
 // init 函数会在包被导入时自动执行	***
 func init() {
@@ -27,6 +28,7 @@ func init() {
 		// 如果环境变量未设置，可以提供一个默认值或报错
 		SECRET_KEY = "default-secret-key"
 	}
+	TokenExpireError = errors.New("TokenExpireError")
 }
 
 func GenerateToken(email string, name string) (accessToken string, refreshToken string, err error) {
@@ -66,21 +68,30 @@ func UpdateToken(signedToken string, refreshToken string, user *model.User) {
 	user.Token = signedToken
 	user.RefreshToken = refreshToken
 }
+
+// VerifyToken 验证Token并解析Claims
 func VerifyToken(userToken string) (MyClaims, error) {
-	//从token中解析出claims
 	token, err := jwt.ParseWithClaims(userToken, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(SECRET_KEY), nil
 	})
 	if err != nil {
+		// 如果是Token过期错误
+		var ve *jwt.ValidationError
+		if errors.As(err, &ve) && ve.Errors&jwt.ValidationErrorExpired != 0 {
+			// 拿出claims（即使Token过期，claims仍然可以被解析出来）
+			claims, ok := token.Claims.(*MyClaims)
+			if !ok {
+				return MyClaims{}, fmt.Errorf("invalid token claims")
+			}
+			// 返回带有用户信息的claims，并标记为Token过期错误
+			return MyClaims{Email: claims.Email, Name: claims.Name}, TokenExpireError
+		}
+		// 如果是其他错误，直接返回空的claims和错误
 		return MyClaims{}, err
 	}
-	//拿出claims
 	claims, ok := token.Claims.(*MyClaims)
 	if !ok {
-		return MyClaims{}, fmt.Errorf("invalid tokens")
-	}
-	if claims.ExpiresAt < time.Now().Unix() {
-		return MyClaims{}, fmt.Errorf("tokens expired")
+		return MyClaims{}, fmt.Errorf("invalid token claims")
 	}
 	return *claims, nil
 }
@@ -105,7 +116,7 @@ func RefreshToken(refreshToken string) (newAccessToken string, newRefreshToken s
 	return newAccessToken, newRefreshToken, nil
 }
 
-// 移除所有的cookies喝Header
+// NullifyTokenCookiesAndHeader 移除所有的cookies喝Header
 func NullifyTokenCookiesAndHeader(c *gin.Context) {
 	c.Writer.Header().Del("Authorization")
 	c.Writer.Header().Del("RefreshToken")
@@ -139,8 +150,7 @@ func Authorization() gin.HandlerFunc {
 		claims, err := VerifyToken(tokenString)
 		if err != nil {
 			// 如果 Access Token 过期，尝试使用 Refresh Token 刷新
-			var ve *jwt.ValidationError
-			if errors.As(err, &ve) && ve.Errors == jwt.ValidationErrorExpired {
+			if errors.Is(err, TokenExpireError) {
 				//检查RefreshToken是不是合法或者是不是过期
 				_, err := VerifyToken(refreshToken)
 				if err != nil {
@@ -173,6 +183,11 @@ func Authorization() gin.HandlerFunc {
 				}
 				SetInfoAtHeaderAndCookies(c, newAccessToken, newRefreshToken, claims.Email, claims.Name)
 				c.Next()
+			} else {
+				NullifyTokenCookiesAndHeader(c)
+				c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "token is invalid"})
+				c.Abort()
+				return
 			}
 		}
 		// 设置用户信息到上下文

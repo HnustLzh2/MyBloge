@@ -23,7 +23,7 @@ func CheckTokenValid(context *gin.Context) {
 		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"token": "Right Token "})
+	context.JSON(http.StatusOK, gin.H{"token": "Right Token"})
 	return
 }
 func RefreshToken(context *gin.Context) {
@@ -42,6 +42,9 @@ func RefreshToken(context *gin.Context) {
 		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
+	//给session和cookies设置
+	context.SetCookie("authToken", tokenString, 60*60*1, "/", "", false, true)
+	context.SetCookie("refreshToken", RefreshTokenString, 60*60*24*7, "/", "", false, true)
 	context.JSON(http.StatusOK, gin.H{"AuthToken": tokenString, "RefreshToken": RefreshTokenString})
 	return
 }

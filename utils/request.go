@@ -52,3 +52,11 @@ type TokenRequest struct {
 	AuthToken    string `json:"auth_token"`
 	RefreshToken string `json:"refresh_token"`
 }
+type CreateCustomizeFolderRequest struct {
+	FolderName string `json:"folder_name"`
+	UserId     string `json:"user_id"`
+}
+type ModifyCustomizeFolderRequest struct {
+	NewName  string `json:"new_name"`
+	FolderId string `json:"folder_id"`
+}

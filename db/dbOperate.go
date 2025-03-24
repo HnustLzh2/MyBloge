@@ -4,6 +4,7 @@ import (
 	"MyBloge/global"
 	"MyBloge/model"
 	"MyBloge/utils"
+	"errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -40,6 +41,7 @@ func CreateFavoritesFolder(id string) (model.FavoritesFolder, error) {
 	var folder model.FavoritesFolder
 	folder.UserId = id
 	folder.ArticleCollection = []model.BloggerArticle{}
+	folder.FolderName = "默认收藏夹"
 	now := time.Now()
 	folder.FolderId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
 	if err := sqlDb.AutoMigrate(&folder); err != nil {
@@ -121,8 +123,13 @@ func FavoriteArticleDB(articleId string, userID string) error {
 	if err != nil {
 		return err
 	}
+	article.StarNum++
 	// 使用 Association 方法添加 Article 到 ArticleCollection
 	if err := sqlDb.Model(&articleCollection).Association("ArticleCollection").Append(&article); err != nil {
+		return err
+	}
+	err = UpdateArticle(article)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -162,6 +169,15 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 	if err := DeleteCommentCache(); err != nil {
 		return err
 	}
+	article, err := FindArticleByID(newComment.ArticleId)
+	if err != nil {
+		return err
+	}
+	article.LikesNum++
+	err = UpdateArticle(article)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -178,14 +194,6 @@ func UpdateUser(user model.User) error {
 		return err
 	}
 	return nil
-}
-
-func GetArticleFromFolder(userID string) (model.FavoritesFolder, error) {
-	var folder model.FavoritesFolder
-	if err := sqlDb.Where("user_id = ?", userID).First(&folder).Error; err != nil {
-		return folder, err
-	}
-	return folder, nil
 }
 
 func RepliedCommentDb(request utils.RepliedCommentRequest) error {
@@ -278,5 +286,58 @@ func GetArticlesByCategory(category string) ([]model.BloggerArticle, error) {
 	if err := sqlDb.Where("category = ?", category).Find(&articles).Error; err != nil {
 		return nil, err
 	}
+	return articles, nil
+}
+
+func CreateCustomizeFolderDB(name string, id string) (model.FavoritesFolder, error) {
+	var folder model.FavoritesFolder
+	folder.FolderName = name
+	folder.UserId = id
+	folder.ArticleCollection = []model.BloggerArticle{}
+	now := time.Now()
+	folder.FolderId = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(now.String())).String()
+	if err := sqlDb.Create(&folder).Error; err != nil {
+		return model.FavoritesFolder{}, err
+	}
+	return folder, nil
+}
+
+func ModifyCustomizeFolder(folderId string, newName string) error {
+	var folder model.FavoritesFolder
+	if err := sqlDb.Where("folder_id = ?", folderId).First(&folder).Error; err != nil {
+		return err
+	}
+	if folder.FolderName != newName {
+		folder.FolderName = newName
+		return errors.New("你使用了一样的名字")
+	}
+	if err := sqlDb.Model(&model.FavoritesFolder{}).Where("folder_id = ?", folderId).Updates(folder).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetAllFoldersDb(userId string) ([]model.FavoritesFolder, error) {
+	var folders []model.FavoritesFolder
+	if err := sqlDb.Where("user_id = ?", userId).Find(&folders).Error; err != nil {
+		return []model.FavoritesFolder{}, err
+	}
+	return folders, nil
+}
+func GetFolderById(folderId string) (model.FavoritesFolder, error) {
+	var folder model.FavoritesFolder
+	if err := sqlDb.Where("folder_id = ?", folderId).First(&folder).Error; err != nil {
+		return model.FavoritesFolder{}, err
+	}
+	return folder, nil
+}
+
+func GetArticleFromFolder(folderId string) ([]model.BloggerArticle, error) {
+	var articles []model.BloggerArticle
+	var folder model.FavoritesFolder
+	if err := sqlDb.Preload("ArticleCollection").First(&folder, "folder_id = ?", folderId).Error; err != nil {
+		return articles, err
+	} //预加载folder相关联的ArticleCollection，把匹配的folderId文件夹赋值给folder，这样就能直接使用它的ArticleCollection
+	articles = folder.ArticleCollection
 	return articles, nil
 }

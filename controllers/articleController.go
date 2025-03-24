@@ -21,6 +21,12 @@ func GetArticleById(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	article.ViewNum++
+	err = db.UpdateArticle(article)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	context.JSON(http.StatusOK, gin.H{"article": article})
 }
 
@@ -174,21 +180,6 @@ func GetAllArticle(context *gin.Context) {
 	}
 }
 
-func GetArticleFromFolder(context *gin.Context) {
-	//拿到userId
-	var request utils.UserIdRequest
-	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	folder, err := db.GetArticleFromFolder(request.UserId)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	context.JSON(http.StatusOK, gin.H{"success": folder})
-}
-
 func RepliedComment(context *gin.Context) {
 	var request utils.RepliedCommentRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
@@ -292,7 +283,7 @@ func GetCategory(context *gin.Context) {
 
 func GetCategoryArticle(context *gin.Context) {
 	var articles []model.BloggerArticle
-	var category = context.Param("category") //断言成string
+	var category = context.Param("category")
 	category = category[9:]
 	articles, err := db.GetArticlesByCategory(category)
 	if err != nil {

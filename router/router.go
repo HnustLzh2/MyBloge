@@ -35,7 +35,7 @@ func SetupRouter() *gin.Engine {
 		// 允许的 HTTP 方法
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		// 允许的请求头
-		AllowHeaders: []string{"Origin", "Content-Type", "Content-Length", "Authorization"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Content-Length", "Authorization", "RefreshToken"},
 		// 允许的响应头
 		ExposeHeaders: []string{"Content-Length"},
 		// 允许携带凭证
@@ -59,7 +59,6 @@ func SetupRouter() *gin.Engine {
 	article := r.Group("/article")
 	article.Use(tokens.Authorization())
 	{
-		article.POST("/getFavoriteArticle", controller.GetArticleFromFolder)
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
 		article.POST("/likeArticle", controller.LikeArticle)
 		article.POST("/addArticle", controller.AddArticle)
@@ -69,6 +68,14 @@ func SetupRouter() *gin.Engine {
 
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
 		article.PUT("/modifyArticle", controller.ModifyArticle)
+	}
+	folder := r.Group("/folder")
+	folder.Use(tokens.Authorization())
+	{
+		folder.GET("/getArticleFromFolder/:folderId", controller.GetFolderArticles)
+		folder.GET("/getMyFolders/:id", controller.GetAllFolders)
+		folder.POST("/createFolder", controller.CreateCustomizeFolder)
+		folder.POST("/modifyFolder", controller.ModifyCustomizeFolder) //传递的是当前的上下文
 	}
 	r.POST("/checkToken", controller.CheckTokenValid)
 	r.POST("/refreshToken", controller.RefreshToken)
