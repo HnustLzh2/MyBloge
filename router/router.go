@@ -65,7 +65,6 @@ func SetupRouter() *gin.Engine {
 		article.POST("/addComments", controller.AddComment)
 		article.POST("/repliedComment", controller.RepliedComment)
 		article.POST("/likeComment", controller.LiKeComment)
-
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
 		article.PUT("/modifyArticle", controller.ModifyArticle)
 	}
@@ -76,6 +75,7 @@ func SetupRouter() *gin.Engine {
 		folder.GET("/getMyFolders/:id", controller.GetAllFolders)
 		folder.POST("/createFolder", controller.CreateCustomizeFolder)
 		folder.POST("/modifyFolder", controller.ModifyCustomizeFolder) //传递的是当前的上下文
+		folder.DELETE("/deleteFolder/:folderId", controller.DeleteFolder)
 	}
 	r.POST("/checkToken", controller.CheckTokenValid)
 	r.POST("/refreshToken", controller.RefreshToken)

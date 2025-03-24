@@ -18,7 +18,7 @@ type AddArticleRequest struct {
 }
 type FavoriteArticleRequest struct {
 	ArticleId string `json:"article_id"`
-	UserId    string `json:"user_id"`
+	FolderId  string `json:"folder_id"`
 }
 type UserIdRequest struct {
 	UserId string `json:"user_id"`

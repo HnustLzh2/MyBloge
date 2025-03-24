@@ -60,3 +60,13 @@ func GetFolderArticles(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"data": articles})
 	return
 }
+
+func DeleteFolder(context *gin.Context) {
+	var folderId = context.Param("folderId")
+	if err := db.DeleteFolderDB(folderId); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"data": "Success"})
+	return
+}

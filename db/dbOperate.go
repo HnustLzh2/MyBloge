@@ -117,27 +117,44 @@ func UpdateArticle(article model.BloggerArticle) error {
 }
 
 // FavoriteArticleDB 通过使用 GORM 的 Association 方法，你可以正确管理多对多关系的添加和更新操作。确保中间表的配置正确，并使用合适的 GORM 方法来操作多对多关系
-func FavoriteArticleDB(articleId string, userID string) error {
-	articleCollection, err := FindCollectionByID(userID)
+func FavoriteArticleDB(articleId string, folderId string) error {
+	articleCollection, err := FindCollectionByID(folderId)
+	if err != nil {
+		return err
+	}
 	article, err := FindArticleByID(articleId)
 	if err != nil {
 		return err
 	}
+	// 检查文章是否已经存在于收藏夹中
+	var exists bool
+	err = sqlDb.Model(&articleCollection).Association("ArticleCollection").Find(&article)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			exists = false
+		} else {
+			return err
+		}
+	} else {
+		exists = true
+	}
+	if exists {
+		return errors.New("文章已经存在了")
+	}
+	// 如果文章不存在于收藏夹中，继续添加
 	article.StarNum++
-	// 使用 Association 方法添加 Article 到 ArticleCollection
-	if err := sqlDb.Model(&articleCollection).Association("ArticleCollection").Append(&article); err != nil {
+	if err := sqlDb.Model(&articleCollection).Association("ArticleCollection").Append(article); err != nil {
 		return err
 	}
-	err = UpdateArticle(article)
-	if err != nil {
+	if err := UpdateArticle(article); err != nil {
 		return err
 	}
 	return nil
 }
 
-func FindCollectionByID(userId string) (model.FavoritesFolder, error) {
+func FindCollectionByID(folderId string) (model.FavoritesFolder, error) {
 	var favoritesFolder model.FavoritesFolder
-	if err := sqlDb.Where("user_id = ?", userId).First(&favoritesFolder).Error; err != nil {
+	if err := sqlDb.Where("folder_id = ?", folderId).First(&favoritesFolder).Error; err != nil {
 		return model.FavoritesFolder{}, err //判断是不是空的
 	}
 	return favoritesFolder, nil
@@ -340,4 +357,11 @@ func GetArticleFromFolder(folderId string) ([]model.BloggerArticle, error) {
 	} //预加载folder相关联的ArticleCollection，把匹配的folderId文件夹赋值给folder，这样就能直接使用它的ArticleCollection
 	articles = folder.ArticleCollection
 	return articles, nil
+}
+
+func DeleteFolderDB(folderId string) error {
+	if err := sqlDb.Delete(&model.FavoritesFolder{}, "folder_id = ?", folderId).Error; err != nil {
+		return err
+	}
+	return nil
 }

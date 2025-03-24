@@ -51,8 +51,8 @@ func FavoriteArticle(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := db.FavoriteArticleDB(request.ArticleId, request.UserId); err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+	if err := db.FavoriteArticleDB(request.ArticleId, request.FolderId); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"success": "Add successfully"})
