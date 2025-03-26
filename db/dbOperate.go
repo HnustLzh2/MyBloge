@@ -118,7 +118,7 @@ func UpdateArticle(article model.BloggerArticle) error {
 
 // FavoriteArticleDB 通过使用 GORM 的 Association 方法，你可以正确管理多对多关系的添加和更新操作。确保中间表的配置正确，并使用合适的 GORM 方法来操作多对多关系
 func FavoriteArticleDB(articleId string, folderId string) error {
-	articleCollection, err := FindCollectionByID(folderId)
+	Folder, err := FindCollectionByID(folderId)
 	if err != nil {
 		return err
 	}
@@ -127,25 +127,21 @@ func FavoriteArticleDB(articleId string, folderId string) error {
 		return err
 	}
 	// 检查文章是否已经存在于收藏夹中
-	var exists bool
-	err = sqlDb.Model(&articleCollection).Association("ArticleCollection").Find(&article)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			exists = false
-		} else {
-			return err
-		}
-	} else {
-		exists = true
-	}
-	if exists {
-		return errors.New("文章已经存在了")
-	}
-	// 如果文章不存在于收藏夹中，继续添加
-	article.StarNum++
-	if err := sqlDb.Model(&articleCollection).Association("ArticleCollection").Append(article); err != nil {
+	var existingArticles []model.BloggerArticle
+	if err := sqlDb.Model(&Folder).Association("ArticleCollection").Find(&existingArticles); err != nil {
 		return err
 	}
+	for _, existingArticle := range existingArticles {
+		if existingArticle.ArticleId == article.ArticleId {
+			return errors.New("文章已经存在了")
+		}
+	}
+	// 如果文章不存在于收藏夹中，继续添加
+	if err := sqlDb.Model(&Folder).Association("ArticleCollection").Append(&article); err != nil {
+		return err
+	}
+	// 更新文章的 StarNum
+	article.StarNum++
 	if err := UpdateArticle(article); err != nil {
 		return err
 	}
@@ -324,10 +320,10 @@ func ModifyCustomizeFolder(folderId string, newName string) error {
 	if err := sqlDb.Where("folder_id = ?", folderId).First(&folder).Error; err != nil {
 		return err
 	}
-	if folder.FolderName != newName {
-		folder.FolderName = newName
+	if folder.FolderName == newName {
 		return errors.New("你使用了一样的名字")
 	}
+	folder.FolderName = newName
 	if err := sqlDb.Model(&model.FavoritesFolder{}).Where("folder_id = ?", folderId).Updates(folder).Error; err != nil {
 		return err
 	}

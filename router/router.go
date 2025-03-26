@@ -60,7 +60,7 @@ func SetupRouter() *gin.Engine {
 	article.Use(tokens.Authorization())
 	{
 		article.POST("/favoriteArticle", controller.FavoriteArticle)
-		article.POST("/likeArticle", controller.LikeArticle)
+		article.GET("/likeArticle/:articleId", controller.LikeArticle)
 		article.POST("/addArticle", controller.AddArticle)
 		article.POST("/addComments", controller.AddComment)
 		article.POST("/repliedComment", controller.RepliedComment)
