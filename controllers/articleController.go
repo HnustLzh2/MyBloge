@@ -81,7 +81,7 @@ func AddComment(context *gin.Context) {
 		return
 	}
 	if err := db.AddCommentDB(request.SendUserId, request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err})
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"success": "Add successfully"})
@@ -216,7 +216,7 @@ func LiKeComment(context *gin.Context) {
 }
 
 func GetCommentById(context *gin.Context) {
-	var articleId = context.Param("id")
+	var articleId = context.Query("article_id")
 	var comment []model.Comment
 	commentsCache, err := db.GetCommentCache()
 	if errors.Is(err, redis.Nil) {
@@ -233,7 +233,7 @@ func GetCommentById(context *gin.Context) {
 			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		context.JSON(http.StatusOK, gin.H{"success": comment})
+		context.JSON(http.StatusOK, gin.H{"comments": comment})
 	} else if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

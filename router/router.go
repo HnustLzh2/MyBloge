@@ -51,7 +51,7 @@ func SetupRouter() *gin.Engine {
 	}
 	r.GET("/getArticle/:id", controller.GetArticleById)
 	r.GET("/getAllArticle", controller.GetAllArticle)
-	r.GET("/getComment/:id", controller.GetCommentById)
+	r.GET("/getComment", controller.GetCommentById)
 	r.GET("/getCategory", controller.GetCategory)
 	r.GET("/getCategoryArticle/:category", controller.GetCategoryArticle)
 	//GET /articles?text=keyword&page=1&size=10
