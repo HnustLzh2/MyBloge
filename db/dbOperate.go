@@ -182,15 +182,6 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 	if err := DeleteCommentCache(); err != nil {
 		return err
 	}
-	article, err := FindArticleByID(newComment.ArticleId)
-	if err != nil {
-		return err
-	}
-	article.LikesNum++
-	err = UpdateArticle(article)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -209,10 +200,10 @@ func UpdateUser(user model.User) error {
 	return nil
 }
 
-func RepliedCommentDb(request utils.RepliedCommentRequest) error {
+func RepliedCommentDb(request utils.RepliedCommentRequest) (error, model.Comment) {
 	user, err := FindUserByUUID(request.SendUserId)
 	if err != nil {
-		return err
+		return err, model.Comment{}
 	}
 	comment := model.Comment{}
 	now := time.Now()
@@ -228,12 +219,12 @@ func RepliedCommentDb(request utils.RepliedCommentRequest) error {
 	comment.ArticleId = request.ArticleId
 	parentComment, err := FindCommentById(request.ParentID)
 	if err != nil {
-		return err
+		return err, model.Comment{}
 	}
 	if err := sqlDb.Model(&parentComment).Association("RepliedComments").Append(&comment); err != nil {
-		return err
+		return err, model.Comment{}
 	}
-	return nil
+	return nil, comment
 }
 
 func FindCommentById(commentId string) (model.Comment, error) {
@@ -256,14 +247,24 @@ func LikeCommentDB(commentId string, userId string) error {
 	if err := sqlDb.Model(&comment).Association("LikedUsers").Append(&user); err != nil {
 		return err
 	}
-	return nil
-}
-
-func GetCommentDB(articleId string, comments *[]model.Comment) error {
-	if err := sqlDb.Where("article_id = ?", articleId).Find(&comments).Error; err != nil {
+	article, err := FindArticleByID(comment.ArticleId)
+	if err != nil {
+		return err
+	}
+	article.LikesNum++
+	err = UpdateArticle(article)
+	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func GetCommentDB(articleId string) ([]model.Comment, error) {
+	var comments []model.Comment
+	if err := sqlDb.Where("article_id=?", articleId).Find(&comments).Error; err != nil {
+		return comments, err
+	}
+	return comments, nil
 }
 
 func SearchArticle(text string, page int, size int) (interface{}, interface{}, interface{}) {

@@ -186,7 +186,8 @@ func RepliedComment(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := db.RepliedCommentDb(request); err != nil {
+	err, comment := db.RepliedCommentDb(request)
+	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -194,7 +195,7 @@ func RepliedComment(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"success": "Replied successfully"})
+	context.JSON(http.StatusOK, gin.H{"success": comment})
 }
 
 func LiKeComment(context *gin.Context) {
@@ -216,11 +217,12 @@ func LiKeComment(context *gin.Context) {
 }
 
 func GetCommentById(context *gin.Context) {
-	var articleId = context.Query("article_id")
+	var articleId = context.Param("id")
 	var comment []model.Comment
 	commentsCache, err := db.GetCommentCache()
 	if errors.Is(err, redis.Nil) {
-		if err := db.GetCommentDB(articleId, &comment); err != nil {
+		comment, err := db.GetCommentDB(articleId)
+		if err != nil {
 			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -233,7 +235,8 @@ func GetCommentById(context *gin.Context) {
 			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		context.JSON(http.StatusOK, gin.H{"comments": comment})
+		context.JSON(http.StatusOK, gin.H{"success": comment})
+		return
 	} else if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -244,8 +247,8 @@ func GetCommentById(context *gin.Context) {
 			return
 		}
 		context.JSON(http.StatusOK, gin.H{"success": comment})
+		return
 	}
-	context.JSON(http.StatusOK, gin.H{"success": comment})
 }
 
 // SearchArticle @Summary      Search articles

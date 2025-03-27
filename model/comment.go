@@ -13,6 +13,6 @@ type Comment struct {
 	LikeCount       int       `json:"like_count"`
 	ArticleId       string    `json:"article_id" gorm:"foreignKey:ArticleId;references:ArticleId"`
 	ParentCommentId *string   `json:"parent_comment_id" gorm:"index"`
-	RepliedComments []Comment `json:"replied_comments" gorm:"foreignKey:ParentCommentId;references:CommentId"`
-	LikedUsers      []User    `gorm:"many2many:comment_likes;" json:"liked_users"`
+	RepliedComments []Comment `json:"replied_comments" gorm:"foreignKey:ParentCommentId;references:CommentId;default:[]"`
+	LikedUsers      []User    `gorm:"many2many:comment_likes;default:[]" json:"liked_users"`
 }
