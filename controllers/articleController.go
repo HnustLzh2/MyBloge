@@ -295,3 +295,12 @@ func GetCategoryArticle(context *gin.Context) {
 	}
 	context.JSON(http.StatusOK, gin.H{"articles": articles})
 }
+
+func DeleteComment(context *gin.Context) {
+	var commentId = context.Param("id")
+	if err := db.DeleteComment(commentId); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": "Comment deleted"})
+}

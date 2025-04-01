@@ -5,6 +5,7 @@
       <functions>
         <function importPath="MyBloge/db" name="FindUserByEmail" />
         <function importPath="MyBloge/db" name="FindArticleByID" />
+        <function importPath="MyBloge/db" name="FindCommentById" />
       </functions>
     </inspection_tool>
   </profile>

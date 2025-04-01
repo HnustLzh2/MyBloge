@@ -83,7 +83,7 @@ func GetAllArticleDB() ([]model.BloggerArticle, error) {
 	}
 	return articles, nil
 }
-func FindUserByUUID(id string) (model.User, error) {
+func FindUserByID(id string) (model.User, error) {
 	var user model.User
 	if err := sqlDb.Where("user_id = ? ", id).First(&user).Error; err != nil {
 		return user, err
@@ -157,7 +157,7 @@ func FindCollectionByID(folderId string) (model.FavoritesFolder, error) {
 }
 
 func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
-	user, err := FindUserByUUID(userid)
+	user, err := FindUserByID(userid)
 	if err != nil {
 		return err
 	}
@@ -168,15 +168,23 @@ func AddCommentDB(userid string, newComment utils.AddCommentRequest) error {
 	comment.Content = newComment.Content
 	comment.UserName = user.Name
 	comment.UserAvatar = user.Avatar
+	comment.ParentCommentId = nil
 	comment.PublishTime = time.Now()
 	comment.LikedUsers = []model.User{}
 	comment.RepliedComments = []model.Comment{}
-	comment.ParentCommentId = nil
 	comment.ArticleId = newComment.ArticleId
 	if err := sqlDb.AutoMigrate(&comment); err != nil {
 		return err
 	}
 	if err := sqlDb.Create(&comment).Error; err != nil {
+		return err
+	}
+	article, err := FindArticleByID(newComment.ArticleId)
+	if err != nil {
+		return err
+	}
+	article.CommentsNum++
+	if err := UpdateArticle(article); err != nil {
 		return err
 	}
 	if err := DeleteCommentCache(); err != nil {
@@ -201,7 +209,7 @@ func UpdateUser(user model.User) error {
 }
 
 func RepliedCommentDb(request utils.RepliedCommentRequest) (error, model.Comment) {
-	user, err := FindUserByUUID(request.SendUserId)
+	user, err := FindUserByID(request.SendUserId)
 	if err != nil {
 		return err, model.Comment{}
 	}
@@ -221,7 +229,21 @@ func RepliedCommentDb(request utils.RepliedCommentRequest) (error, model.Comment
 	if err != nil {
 		return err, model.Comment{}
 	}
+	comment.ParentCommentName = &parentComment.UserName
+	// 将新评论添加到父评论的 RepliedComments 中
 	if err := sqlDb.Model(&parentComment).Association("RepliedComments").Append(&comment); err != nil {
+		return err, model.Comment{}
+	}
+	// 使用 Preload 加载 RepliedComments 和 LikedUsers
+	if err := sqlDb.Preload("RepliedComments").Preload("LikedUsers").First(&comment, "comment_id = ?", comment.CommentId).Error; err != nil {
+		return err, model.Comment{}
+	}
+	article, err := FindArticleByID(request.ArticleId)
+	if err != nil {
+		return err, model.Comment{}
+	}
+	article.CommentsNum++
+	if err := UpdateArticle(article); err != nil {
 		return err, model.Comment{}
 	}
 	return nil, comment
@@ -236,7 +258,7 @@ func FindCommentById(commentId string) (model.Comment, error) {
 }
 
 func LikeCommentDB(commentId string, userId string) error {
-	user, err := FindUserByUUID(userId)
+	user, err := FindUserByID(userId)
 	if err != nil {
 		return err
 	}
@@ -247,13 +269,9 @@ func LikeCommentDB(commentId string, userId string) error {
 	if err := sqlDb.Model(&comment).Association("LikedUsers").Append(&user); err != nil {
 		return err
 	}
-	article, err := FindArticleByID(comment.ArticleId)
-	if err != nil {
-		return err
-	}
-	article.LikesNum++
-	err = UpdateArticle(article)
-	if err != nil {
+	comment.LikeCount++
+	//更新数量
+	if err := sqlDb.Where("comment_id = ?", commentId).Updates(&comment).Error; err != nil {
 		return err
 	}
 	return nil
@@ -261,12 +279,12 @@ func LikeCommentDB(commentId string, userId string) error {
 
 func GetCommentDB(articleId string) ([]model.Comment, error) {
 	var comments []model.Comment
-	if err := sqlDb.Where("article_id=?", articleId).Find(&comments).Error; err != nil {
+	// 使用 Preload 加载 RepliedComments 和 LikedUsers，并筛选 parent_comment_id 为空的记录
+	if err := sqlDb.Preload("RepliedComments").Preload("LikedUsers").Where("article_id = ?", articleId).Find(&comments).Error; err != nil {
 		return comments, err
 	}
 	return comments, nil
 }
-
 func SearchArticle(text string, page int, size int) (interface{}, interface{}, interface{}) {
 	var articles []model.BloggerArticle
 	var total int64
@@ -351,7 +369,8 @@ func GetArticleFromFolder(folderId string) ([]model.BloggerArticle, error) {
 	var folder model.FavoritesFolder
 	if err := sqlDb.Preload("ArticleCollection").First(&folder, "folder_id = ?", folderId).Error; err != nil {
 		return articles, err
-	} //预加载folder相关联的ArticleCollection，把匹配的folderId文件夹赋值给folder，这样就能直接使用它的ArticleCollection
+	}
+	//预加载folder相关联的ArticleCollection，把匹配的folderId文件夹赋值给folder，这样就能直接使用它的ArticleCollection
 	articles = folder.ArticleCollection
 	return articles, nil
 }
@@ -359,6 +378,22 @@ func GetArticleFromFolder(folderId string) ([]model.BloggerArticle, error) {
 func DeleteFolderDB(folderId string) error {
 	if err := sqlDb.Delete(&model.FavoritesFolder{}, "folder_id = ?", folderId).Error; err != nil {
 		return err
+	}
+	return nil
+}
+
+func DeleteComment(commentId string) interface{} {
+	var comment = model.Comment{}
+	if err := sqlDb.Where("comment_id = ?", commentId).First(&comment).Error; err != nil {
+		return err
+	}
+	//有问题啊，有问题，要先删除所有的子评论才能删除这个大评论
+	if err := sqlDb.Where("comment_id = ?", commentId).Delete(&model.Comment{}).Error; err != nil {
+		return err
+	}
+	err := DeleteArticleCache()
+	if err != nil {
+		return nil
 	}
 	return nil
 }

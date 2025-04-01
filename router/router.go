@@ -66,6 +66,7 @@ func SetupRouter() *gin.Engine {
 		article.POST("/repliedComment", controller.RepliedComment)
 		article.POST("/likeComment", controller.LiKeComment)
 		article.DELETE("/deleteArticle", controller.DeleteArticle)
+		article.DELETE("/deleteComment/:id", controller.DeleteComment)
 		article.PUT("/modifyArticle", controller.ModifyArticle)
 	}
 	folder := r.Group("/folder")
@@ -79,6 +80,33 @@ func SetupRouter() *gin.Engine {
 	}
 	r.POST("/checkToken", controller.CheckTokenValid)
 	r.POST("/refreshToken", controller.RefreshToken)
+	// 聊天室相关路由
+	chat := r.Group("/chat")
+	chat.Use(tokens.Authorization()) // 使用授权中间件
+	{
+		chat.POST("/create-room", controller.CreateChatRoom)    // 创建聊天室
+		chat.GET("/rooms", controller.GetChatRooms)             // 获取所有聊天室
+		chat.GET("/room/:roomId", controller.GetChatRoom)       // 获取单个聊天室信息
+		chat.GET("/joinRoom", controller.JoinChatRoom)          // 加入聊天室
+		chat.GET("/leave-room", controller.LeaveOutCharRoom)    // 真的离开这个聊天室
+		chat.DELETE("/room/:roomId", controller.DeleteChatRoom) // 删除聊天室
+	}
+	// 消息相关路由
+	message := r.Group("/message")
+	message.Use(tokens.Authorization()) // 使用授权中间件
+	{
+		message.POST("/send", controller.SendMessage)                 // 发送消息
+		message.GET("/history/:roomId", controller.GetMessageHistory) // 获取聊天历史
+	}
+	// 私聊相关路由
+	privateChat := r.Group("/private-chat")
+	privateChat.Use(tokens.Authorization()) // 使用授权中间件
+	{
+		privateChat.POST("/create_private_room", controller.CreatePrivateRoom) //创建私聊房间
+		privateChat.GET("/start", controller.StartPrivateChat)                 // 开始私聊
+		privateChat.GET("/list", controller.GetPrivateChats)                   // 获取私聊列表
+		privateChat.GET("/history/:roomId", controller.GetPrivateChatHistory)  // 获取私聊历史
+	}
 	registerSwagger(r)
 	return r
 }

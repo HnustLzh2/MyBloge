@@ -31,7 +31,6 @@ func SetArticleCache(articleByte []byte) error {
 }
 func GetCommentCache() (string, error) {
 	cacheData, err := redisDb.Get(commentCache).Result()
-	DeleteCommentCache()
 	if err != nil {
 		return "", err
 	}

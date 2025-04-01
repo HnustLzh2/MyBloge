@@ -60,3 +60,20 @@ type ModifyCustomizeFolderRequest struct {
 	NewName  string `json:"new_name"`
 	FolderId string `json:"folder_id"`
 }
+type CreateRoomRequest struct {
+	RoomName  string `json:"room_name"`
+	CreatorId string `json:"creator_id"`
+}
+type SendMessageRequest struct {
+	MessageId      string `json:"message_id"`
+	MessageContent string `json:"message_content"`
+	MessageType    int    `json:"message_type"`
+	RoomId         string `json:"room_id"`
+	SenderId       string `json:"sender_id"`
+	Timestamp      int64  `json:"timestamp"`
+}
+type CreatePrivateRoomRequest struct {
+	RoomName string `json:"room_name"`
+	UserAId  string `json:"user_a_id"`
+	UserBId  string `json:"user_b_id"`
+}
