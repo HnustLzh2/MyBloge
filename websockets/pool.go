@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"math/rand"
 	"sync"
@@ -16,7 +15,7 @@ import (
 type Pool struct {
 	Register   chan *Client
 	Unregister chan *Client
-	Clients    map[*Client]bool
+	Clients    map[*Client]bool            //所以的Clients
 	Rooms      map[string]map[*Client]bool // 每个聊天室ID对应一个客户端集合*** important
 	Broadcast  chan model.Message
 	Mu         sync.Mutex // 保护对 Clients 的并发访问
@@ -35,7 +34,7 @@ func NewPool() *Pool {
 // HeartBeat 用于心跳包检测
 type HeartBeat struct {
 	message     string
-	timestamp   timestamppb.Timestamp //高精度时间戳，通常在grpc使用
+	timestamp   int64 //高精度时间戳，通常在grpc使用
 	sessionId   string
 	nonce       int
 	cpuUsage    float64
@@ -50,46 +49,57 @@ const (
 func (pool *Pool) HeartBeatCheck() {
 	ticker := time.NewTicker(heartBeatTimeDuration)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
 			pool.Mu.Lock()
-			// 对所有的客户端发送检测
+			// 获取CPU使用率
 			percent, err := cpu.Percent(time.Second, false)
 			if err != nil {
-				log.Println(err)
+				log.Printf("Error getting CPU percent: %v", err)
 				break
 			}
+			// 获取内存信息
 			memInfo, err := mem.VirtualMemory()
 			if err != nil {
-				log.Println(err)
+				log.Printf("Error getting memory info: %v", err)
 				break
 			}
+			// 计算负载状态
 			var loadState string
 			loadState = "low"
 			if memInfo.UsedPercent > 0.5 && memInfo.UsedPercent < 0.8 {
 				loadState = "middle"
-			} else {
+			} else if memInfo.UsedPercent >= 0.8 {
 				loadState = "busy"
 			}
+			// 创建心跳包
 			heartBeat := HeartBeat{
 				message:     "heartbeat",
-				timestamp:   timestamppb.Timestamp{Seconds: time.Now().Unix()},
+				timestamp:   time.Now().Unix(),
 				sessionId:   "",
-				nonce:       1000 + rand.Intn(9000), //1000 到 10000 (四位数)
+				nonce:       1000 + rand.Intn(9000), // 1000 到 10000 (四位数)
 				cpuUsage:    percent[0],             // CPU占用
-				memoryUsage: memInfo.UsedPercent,    //内存占用
+				memoryUsage: memInfo.UsedPercent,    // 内存占用
 				loadState:   loadState,
 			}
+			// 向所有客户端发送心跳包
 			for client := range pool.Clients {
-				err := client.Conn.WriteJSON(&heartBeat)
+				err := client.Conn.WriteMessage(websocket.TextMessage, []byte(heartBeat.message))
 				if err != nil {
+					log.Printf("Error sending heartbeat to client: %v", err)
+					if err := client.Conn.Close(); err != nil {
+						fmt.Println(err)
+						return
+					}
+					fmt.Println(err)
 					return
 				}
 			}
+			pool.Mu.Unlock()
 		}
 	}
-
 }
 
 // Start 监听加入房间，离开房间，监听消息的传递
@@ -125,9 +135,9 @@ func (pool *Pool) Start() {
 			roomID := client.RoomID
 			if ClientsCollection, ok := pool.Rooms[roomID]; ok {
 				delete(ClientsCollection, client)
-				if len(ClientsCollection) == 0 {
-					delete(pool.Rooms, client.RoomID)
-				}
+			} else {
+				fmt.Println("客户端集合不存在")
+				return
 			}
 			delete(pool.Clients, client) // 这个Clients代表所有的Client
 			fmt.Println("客户端的数量", len(pool.Clients))
@@ -154,7 +164,7 @@ func (pool *Pool) Start() {
 				return
 			}
 			for client := range pool.Rooms[roomID] {
-				if err := client.Conn.WriteMessage(websocket.TextMessage, []byte(message.Message)); err != nil {
+				if err := client.Conn.WriteJSON(message); err != nil {
 					if err := client.Conn.Close(); err != nil {
 						fmt.Println(err)
 						return

@@ -68,6 +68,25 @@ func JoinChatRoom(context *gin.Context) {
 		global.GlobalPool = websockets.NewPool()
 		go global.GlobalPool.Start()
 		go global.GlobalPool.HeartBeatCheck()
+		// 启动goroutine持续监听消息
+		go func(pool *websockets.Pool) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("goroutine panicked: %v", r)
+				}
+			}()
+			for {
+				select {
+				case message := <-pool.Broadcast:
+					log.Println("收到消息：", message.Message)
+					if err := db.AddMessageToDb(message); err != nil {
+						log.Printf("数据库操作失败: %v", err)
+						// 不退出goroutine，继续监听
+						continue
+					}
+				}
+			}
+		}(global.GlobalPool)
 	}
 	// 创建一个新的客户端实例，避免使用全局变量
 	client := &websockets.Client{
@@ -77,26 +96,8 @@ func JoinChatRoom(context *gin.Context) {
 		RoomID: roomId,
 		Mu:     sync.Mutex{},
 	}
-	// 启动goroutine持续监听消息
-	go func(c *websockets.Client) {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("goroutine panicked: %v", r)
-			}
-		}()
-		for {
-			select {
-			case message := <-c.Pool.Broadcast:
-				log.Println("收到消息：", message.Message)
-				if err := db.AddMessageToDb(message); err != nil {
-					log.Printf("数据库操作失败: %v", err)
-					// 不退出goroutine，继续监听
-					continue
-				}
-			}
-		}
-	}(client)
 	global.GlobalPool.Register <- client
+	global.GlobalPool.Clients[client] = true
 	client.ReadMessageFromRoom(roomId, userId)
 	context.JSON(http.StatusCreated, gin.H{"success": "Join successfully! Welcome!"})
 }
@@ -207,6 +208,25 @@ func StartPrivateChat(context *gin.Context) {
 		global.GlobalPool = websockets.NewPool()
 		go global.GlobalPool.Start()
 		go global.GlobalPool.HeartBeatCheck()
+		// 启动goroutine持续监听消息
+		go func(pool *websockets.Pool) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("goroutine panicked: %v", r)
+				}
+			}()
+			for {
+				select {
+				case message := <-pool.Broadcast:
+					log.Println("收到消息：", message.Message)
+					if err := db.AddMessageToDb(message); err != nil {
+						log.Printf("数据库操作失败: %v", err)
+						// 不退出goroutine，继续监听
+						continue
+					}
+				}
+			}
+		}(global.GlobalPool)
 	}
 	// 创建一个新的客户端实例，避免使用全局变量
 	client := &websockets.Client{
@@ -216,26 +236,8 @@ func StartPrivateChat(context *gin.Context) {
 		RoomID: roomId,
 		Mu:     sync.Mutex{},
 	}
-	// 启动goroutine持续监听消息
-	go func(c *websockets.Client) {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("goroutine panicked: %v", r)
-			}
-		}()
-		for {
-			select {
-			case message := <-c.Pool.Broadcast:
-				log.Println("收到消息：", message.Message)
-				if err := db.AddMessageToDb(message); err != nil {
-					log.Printf("数据库操作失败: %v", err)
-					// 不退出goroutine，继续监听
-					continue
-				}
-			}
-		}
-	}(client)
 	global.GlobalPool.Register <- client
+	global.GlobalPool.Clients[client] = true
 	client.ReadMessageFromRoom(roomId, userAId)
 	context.JSON(http.StatusCreated, gin.H{"success": "Join successfully! Welcome!"})
 }
@@ -259,4 +261,15 @@ func GetPrivateChatHistory(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"success": messages})
+}
+
+// GetYourRooms 获得用户加入的聊天室
+func GetYourRooms(context *gin.Context) {
+	userId := context.Param("id")
+	rooms, err := db.GetYourRoomsDb(userId)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"success": rooms})
 }

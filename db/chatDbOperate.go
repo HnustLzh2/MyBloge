@@ -56,18 +56,34 @@ func AddUserToChatRoom(userId string, roomId string) error {
 	if err != nil {
 		return err
 	}
-	// 检查用户是否已经在 UserCollection 中
-	var exists bool
-	sqlDb.Model(&room).Joins("UserCollection").Where("user_collection.user_id = ?", user.ID).First(&exists)
-	if exists {
+	// 使用事务确保操作的原子性
+	tx := sqlDb.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	// 检查用户是否已经在聊天室中
+	var count int64
+	err = tx.Model(&model.ChatRoom{}).Joins("JOIN chat_room_users ON chat_rooms.chat_room_id = chat_room_users.chat_room_chat_room_id").
+		Where("chat_room_users.user_user_id = ?", userId).
+		Where("chat_rooms.chat_room_id = ?", roomId).
+		Count(&count).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if count > 0 {
+		tx.Rollback()
 		return nil // 用户已存在，直接返回
 	}
 	// 如果用户不存在，则添加
-	err = sqlDb.Model(&room).Association("UserCollection").Append(&user)
+	err = tx.Model(&room).Association("UserCollection").Append(&user)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	return nil
+	return tx.Commit().Error
 }
 func LeaveOutChatRoom(userId string, roomId string) error {
 	user, err := FindUserByID(userId)
@@ -154,6 +170,19 @@ func FindUserInRoom(idA string, idB string, roomId string) (bool, error) {
 func GetAllPrivateRoom() ([]model.ChatRoom, error) {
 	var rooms []model.ChatRoom
 	if err := sqlDb.Where("is_private = true").Find(&rooms).Error; err != nil {
+		return rooms, err
+	}
+	return rooms, nil
+}
+
+// GetYourRoomsDb 使用了自然连接，joins函数用于连接2个表在相同的部分，有左连接右连接，自然连接
+func GetYourRoomsDb(userId string) ([]model.ChatRoom, error) {
+	var rooms []model.ChatRoom
+	// 使用 Joins 来关联 chat_room_users 中间表
+	if err := sqlDb.Joins("JOIN chat_room_users ON chat_rooms.chat_room_id = chat_room_users.chat_room_chat_room_id").
+		Where("chat_room_users.user_user_id = ?", userId).
+		Preload("UserCollection").
+		Find(&rooms).Error; err != nil {
 		return rooms, err
 	}
 	return rooms, nil

@@ -84,8 +84,9 @@ func SetupRouter() *gin.Engine {
 	chat := r.Group("/chat")
 	chat.Use(tokens.Authorization()) // 使用授权中间件
 	{
-		chat.POST("/create-room", controller.CreateChatRoom)    // 创建聊天室
-		chat.GET("/rooms", controller.GetChatRooms)             // 获取所有聊天室
+		chat.POST("/create-room", controller.CreateChatRoom) // 创建聊天室
+		chat.GET("/rooms", controller.GetChatRooms)          // 获取所有聊天室
+		chat.GET("/yourRooms/:id", controller.GetYourRooms)
 		chat.GET("/room/:roomId", controller.GetChatRoom)       // 获取单个聊天室信息
 		chat.GET("/joinRoom", controller.JoinChatRoom)          // 加入聊天室
 		chat.GET("/leave-room", controller.LeaveOutCharRoom)    // 真的离开这个聊天室
