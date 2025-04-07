@@ -47,7 +47,7 @@ func GetChatRoom(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"chat_room": room})
 }
 
-// JoinChatRoom 加入一个群聊，开始监听消息，数据库里记录
+// JoinChatRoom 加入一个群聊，开始监听消息，数据库里记录，遇到问题，不能随意断开连接啊
 func JoinChatRoom(context *gin.Context) {
 	userId := context.Query("userId")
 	roomId := context.Query("roomId")
@@ -97,7 +97,6 @@ func JoinChatRoom(context *gin.Context) {
 		Mu:     sync.Mutex{},
 	}
 	global.GlobalPool.Register <- client
-	global.GlobalPool.Clients[client] = true
 	client.ReadMessageFromRoom(roomId, userId)
 	context.JSON(http.StatusCreated, gin.H{"success": "Join successfully! Welcome!"})
 }

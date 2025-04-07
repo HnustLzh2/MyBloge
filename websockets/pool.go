@@ -43,13 +43,12 @@ type HeartBeat struct {
 }
 
 const (
-	heartBeatTimeDuration = 3 * time.Second
+	heartBeatTimeDuration = 10 * time.Second
 )
 
 func (pool *Pool) HeartBeatCheck() {
 	ticker := time.NewTicker(heartBeatTimeDuration)
 	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ticker.C:
@@ -58,13 +57,15 @@ func (pool *Pool) HeartBeatCheck() {
 			percent, err := cpu.Percent(time.Second, false)
 			if err != nil {
 				log.Printf("Error getting CPU percent: %v", err)
-				break
+				pool.Mu.Unlock()
+				return
 			}
 			// 获取内存信息
 			memInfo, err := mem.VirtualMemory()
 			if err != nil {
 				log.Printf("Error getting memory info: %v", err)
-				break
+				pool.Mu.Unlock()
+				return
 			}
 			// 计算负载状态
 			var loadState string
@@ -84,17 +85,25 @@ func (pool *Pool) HeartBeatCheck() {
 				memoryUsage: memInfo.UsedPercent,    // 内存占用
 				loadState:   loadState,
 			}
-			// 向所有客户端发送心跳包
+			// 向所有客户端发送心跳包,如果发送心跳包的时候断开了链接，就会出现错误
 			for client := range pool.Clients {
 				err := client.Conn.WriteMessage(websocket.TextMessage, []byte(heartBeat.message))
 				if err != nil {
 					log.Printf("Error sending heartbeat to client: %v", err)
 					if err := client.Conn.Close(); err != nil {
-						fmt.Println(err)
-						return
+						fmt.Printf("Error closing client: %v", err)
+						break //*** break 是退出这个循环， return 是退出这个函数，使用break为了正常关闭连接
 					}
-					fmt.Println(err)
-					return
+					break
+				}
+				err = client.Conn.WriteJSON(&heartBeat)
+				if err != nil {
+					log.Printf("Error sending heartbeat to client: %v", err)
+					if err := client.Conn.Close(); err != nil {
+						fmt.Printf("Error closing client: %v", err)
+						break
+					}
+					break
 				}
 			}
 			pool.Mu.Unlock()
@@ -122,21 +131,26 @@ func (pool *Pool) Start() {
 					err := client.Conn.Close()
 					if err != nil {
 						fmt.Println(err)
+						pool.Mu.Unlock() //*** return 之前记得把锁释放掉，不能重复占用锁资源
 						return
 					}
 					fmt.Println(err)
+					pool.Mu.Unlock()
 					return
 				}
 			}
+			fmt.Println(pool.Clients[client])
 			pool.Mu.Unlock()
 		case client := <-pool.Unregister:
 			pool.Mu.Lock()
 			// 先检查这个客户端集合是否存在
 			roomID := client.RoomID
+			fmt.Println(pool.Rooms[roomID])
 			if ClientsCollection, ok := pool.Rooms[roomID]; ok {
 				delete(ClientsCollection, client)
 			} else {
 				fmt.Println("客户端集合不存在")
+				pool.Mu.Unlock()
 				return
 			}
 			delete(pool.Clients, client) // 这个Clients代表所有的Client
@@ -147,10 +161,12 @@ func (pool *Pool) Start() {
 				if err != nil {
 					err := client.Conn.Close()
 					if err != nil {
-						fmt.Println(err)
+						fmt.Println("send wrong", err)
+						pool.Mu.Unlock()
 						return
 					}
 					fmt.Println(err)
+					pool.Mu.Unlock()
 					return
 				}
 			}
@@ -161,15 +177,18 @@ func (pool *Pool) Start() {
 			roomID := message.RoomId
 			if _, ok := pool.Rooms[roomID]; !ok {
 				log.Printf("Room not found: %s", message.RoomId)
+				pool.Mu.Unlock()
 				return
 			}
 			for client := range pool.Rooms[roomID] {
 				if err := client.Conn.WriteJSON(message); err != nil {
 					if err := client.Conn.Close(); err != nil {
 						fmt.Println(err)
+						pool.Mu.Unlock()
 						return
 					}
 					fmt.Println(err)
+					pool.Mu.Unlock()
 					return
 				}
 			}
