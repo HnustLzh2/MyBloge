@@ -87,21 +87,13 @@ func (pool *Pool) HeartBeatCheck() {
 			}
 			// 向所有客户端发送心跳包,如果发送心跳包的时候断开了链接，就会出现错误
 			for client := range pool.Clients {
+				// writeJson 就会在前端直接显示出来，前端要处理数据类型
 				err := client.Conn.WriteMessage(websocket.TextMessage, []byte(heartBeat.message))
 				if err != nil {
 					log.Printf("Error sending heartbeat to client: %v", err)
 					if err := client.Conn.Close(); err != nil {
 						fmt.Printf("Error closing client: %v", err)
 						break //*** break 是退出这个循环， return 是退出这个函数，使用break为了正常关闭连接
-					}
-					break
-				}
-				err = client.Conn.WriteJSON(&heartBeat)
-				if err != nil {
-					log.Printf("Error sending heartbeat to client: %v", err)
-					if err := client.Conn.Close(); err != nil {
-						fmt.Printf("Error closing client: %v", err)
-						break
 					}
 					break
 				}
