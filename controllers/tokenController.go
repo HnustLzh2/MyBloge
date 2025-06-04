@@ -34,12 +34,12 @@ func RefreshToken(context *gin.Context) {
 	}
 	_, err := tokens.VerifyToken(request.RefreshToken)
 	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		context.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 	tokenString, RefreshTokenString, err := tokens.RefreshToken(request.RefreshToken)
 	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		context.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 	//给session和cookies设置

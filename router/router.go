@@ -43,6 +43,9 @@ func SetupRouter() *gin.Engine {
 		// 预检请求缓存时间
 		MaxAge: 12 * time.Hour,
 	}))
+	r.GET("/hello", func(c *gin.Context) {
+		c.JSON(200, gin.H{"hello": "world"})
+	})
 	auth := r.Group("/auth")
 	{
 		auth.POST("/login", controller.Login)
